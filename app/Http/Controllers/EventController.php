@@ -42,21 +42,16 @@ class EventController extends Controller
 
         $video = '';
 
-        $linksArray = [];
-        $eventLinks = Link::where([['status', 'wait'],['belongs_to', 'musin.zp'] ])->pluck('links');
+        $eventLinks = null;
+        $eventLinks = Link::where([['status', 'wait'],['belongs_to', 'musin.zp'] ])->pluck('links')->toArray();
 
-        foreach ($eventLinks as $link){
-            $linksArray[] = $link;
-        }
-
-        foreach ($linksArray as $eventLink){
+        foreach ($eventLinks as $eventLink){
 
             $html = file_get_contents($eventLink);
             $crawler = new Crawler($html);
 
             $title = $crawler->filterXPath('//div[@class="row event"]//div[@class="col-xs-8"]//h1')->html();
             $description = $crawler->filterXPath('//div[@class="col-xs-12 content_desc"]')->html();
-            $description = addslashes($description);
             $eventSessionHtml = $crawler->filterXPath('//div[@class="btn-buy-container"]//a');
 
             $eventSessionInfo = [];
@@ -65,7 +60,7 @@ class EventController extends Controller
                 $eventSessionInfo[] = explode(',', $node->nodeValue);
             }
 
-            $eventSession = null;
+            $eventSession = [];
 
             if ($eventSessionInfo){
                 foreach ($eventSessionInfo as $index => $session){
@@ -80,8 +75,8 @@ class EventController extends Controller
                     $sessionYear = $sessionMonth < now()->format('m') ? now()->addYear()->format('Y') : now()->format('Y');
 
                     $sessionDay = $session[1][0] < 10 ? '0' . $session[1][0] : $session[1][0];
-                    $sessionDate = $sessionYear . '-' . $sessionMonth . '-' . $sessionDay;
-                    $eventSession[$sessionDate][]['time'] = $session[2];
+                    $sessionDate = $sessionDay . '-' . $sessionMonth . '-' . $sessionYear;
+                    $eventSession[$sessionDate]['time'][] = $session[2];
                 }
             } else {
                 Link::where('links', $eventLink)->update(['status' => 'no tickets']);
@@ -97,8 +92,6 @@ class EventController extends Controller
             $city = trim($eventInfo[0]);
 
             $startDate = null;
-
-
 
             if (count($eventInfo)>1){
                 if (count($eventInfo)>2){
@@ -120,10 +113,10 @@ class EventController extends Controller
                 $startDate = intval($startDate[2]).'-'.$startDate[1].'-'.$startDate[0];
             }
 
+
+
             if ($startDate == null ){
                 $startDate = array_keys($eventSession)[0];
-            }else{
-                $startDate = '';
             }
 
             $eventObject = $crawler->filterXPath('//div[@class="row event"]//div[@class="col-xs-8"]//div[2]//a')->html();
@@ -149,17 +142,18 @@ class EventController extends Controller
             }
 
             if ($eventCategoryName == null){
-                $eventCategoryName = 'Нет категории';
                 Link::where('links', $eventLink)->update(['status' => 'no category']);
-
+                continue;
             }
 
             $categoryId = Category::where('name', $eventCategoryName)->value('id');
 
+            $eventUniqueName = 'musin'.$eventCategoryUri[0].$eventCategoryUri[2];
 
-            $eventName = Event::where('title', $title)->value('title');
+            $checkEvent = Event::where('unique_name', $eventUniqueName)->first();
 
-            if (!$eventName){
+            if (!$checkEvent){
+                $event = null;
 
                 Storage::disk('local')->put('public/images/'.$imageName, $image);
 
@@ -174,19 +168,20 @@ class EventController extends Controller
                     'belongs_to' => 'musin.zp',
                     'published' => 1,
                     'video' => $video,
+                    'link' =>$eventLink,
+                    'unique_name' => $eventUniqueName,
                 ]);
 
-                echo $event->id;
-                echo '<br>';
-
-                if ($event->id){
-
+                if ($event){
+                    echo $event->id;
+                    echo '<br>';
                     Link::where('links', $eventLink)->update(['status' => 'success']);
-
-
                     echo '<br>-----------------------------------------<br>';
 
-
+                } else {
+                    echo $eventLink;
+                    Link::where('links', $eventLink)->update(['status' => 'error']);
+                    echo '<br>-----------------------------------------<br>';
 
                 }
             }
@@ -195,7 +190,7 @@ class EventController extends Controller
 
     public function showEvents()
     {
-        $events = Event::all();
+        $events = Event::where('published', 1)->paginate(15);
 
         return view('parser.showEvents', ['events' => $events]);
     }
@@ -204,7 +199,19 @@ class EventController extends Controller
     {
         $event = Event::where('id', $id)->first();
 
-        return view('parser.showEvent', [ 'event' => $event]);
+
+        $sessions =$event->sessions;
+
+        $sessions = json_decode($sessions, true);
+
+//        echo '<pre>';
+//        var_dump($sessions);
+//        die();
+
+        return view('parser.showEvent', [
+            'event' => $event,
+            'sessions' => $sessions,
+            ]);
     }
 
 

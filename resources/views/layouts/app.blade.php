@@ -18,26 +18,7 @@
 
     <!-- Styles -->
     <link href="{{ asset('css/app.css') }}" rel="stylesheet">
-    <style>
-        body, html {
-            height: 100%;
-        }
-        .bg {
-
-            background-image: url("http://365psd.ru/images/backgrounds/stucco.png");
-
-
-            height: 100%;
-
-
-            background-position: center;
-            background-repeat: no-repeat;
-            background-size: cover;
-        }
-    </style>
-
-</head>
-<body>
+   <body>
 <div class="bg">
     <div id="app">
         <nav class="navbar navbar-expand-md navbar-light navbar-laravel">

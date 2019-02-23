@@ -18,7 +18,9 @@ class Event extends Model
         'belongs_to',
         'published',
         'sessions',
-        'video'
+        'video',
+        'link',
+        'unique_name',
     ];
 
     /**

@@ -24,6 +24,8 @@ class CreateEventsTable extends Migration
             $table->text('video');
             $table->integer('category');
             $table->text('belongs_to');
+            $table->text('link');
+            $table->text('unique_name');
             $table->integer('published');
             $table->timestamps();
         });
